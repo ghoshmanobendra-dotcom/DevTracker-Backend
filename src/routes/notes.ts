@@ -60,10 +60,18 @@ router.post('/', authenticate, upload.single('file'), async (req: AuthRequest, r
     let media_name: string | undefined;
 
     if (req.file) {
-      const isImageOrPdf = req.file.mimetype.startsWith('image/') || req.file.mimetype === 'application/pdf';
+      const isImage = req.file.mimetype.startsWith('image/');
+      const isPdf = req.file.mimetype === 'application/pdf';
+
+      // Images → resource_type 'image' (Cloudinary optimises them)
+      // PDFs & all other files → resource_type 'raw' (served as-is, direct URL)
+      const resourceType = isImage ? 'image' : 'raw';
+
       const result = await uploadToCloudinary(req.file.buffer, {
         folder: `devtracker/${req.userId}/notes`,
-        resource_type: isImageOrPdf ? 'image' : 'raw',
+        resource_type: resourceType,
+        // For PDFs keep the original extension so browsers open them correctly
+        ...(isPdf && { format: 'pdf' }),
       });
       media_url = result.secure_url;
       media_type = req.file.mimetype;
